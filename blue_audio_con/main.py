@@ -1,9 +1,39 @@
+import logging.config
 import time
+from contextlib import ExitStack
 
 from pulsectl import Pulse
 
 from blue_audio_con.bluetoothctl import Bluetoothctl
 from blue_audio_con.deviceui import show_message, show_window
+
+logger = logging.getLogger()
+logging.config.dictConfig({
+    "version": 1,
+    "formatters": {
+        "simple": {'format': "%(asctime)s - %(name)s - %(levelname)s - %(message)s"},
+        "syslog": {'format': "blue_audio_con-%(name)s: %(message)s"}
+    },
+    "handlers": {
+        "syslog": {
+            "class": "logging.handlers.SysLogHandler",
+            "level": "DEBUG",
+            "address": "/dev/log",
+            "formatter": "syslog",
+        },
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "level": "DEBUG",
+            "stream": "ext://sys.stdout",
+        }
+    },
+    "root": {
+        "level": "DEBUG",
+        "handlers": ["syslog", "console"]
+    },
+    "disable_existing_loggers": False
+})
 
 
 def is_connected(info):
@@ -19,7 +49,7 @@ def find_sink(mac, pulse):
 
 def reset_card(pulse, card):
     for p in ["a2dp_sink", "off", "headset_head_unit", "off", "a2dp_sink"]:
-        print("Set profile to %s" % p)
+        logger.debug("Set profile to %s", p)
         pulse.card_profile_set(card, p)
         time.sleep(0.1)
 
@@ -33,6 +63,7 @@ def find_card(pulse, mac):
 
 def connect(bl, mac):
     for i in range(0, 20):
+        logger.debug("Attempt %s of 20...", i)
         info = bl.get_device_info(mac)
         if is_connected(info):
             break
@@ -64,46 +95,50 @@ def find_audio_devices(bl):
 # TODO improve device list: show available devices, update, icons
 
 def main():
-    print("Init bluetooth...")
-    with Bluetoothctl() as bl:
-        print("Bluetooth ready, starting scan.")
+    logger.info("Init bluetooth...")
+    with ExitStack() as stack:
+        bl = stack.enter_context(Bluetoothctl())
+        logfile = open("/tmp/blue-audio-con.btctl.log", "w")
+        bl.child.logfile = stack.enter_context(logfile)
+
+        logger.info("Bluetooth ready, starting scan.")
         bl.start_scan()
 
-        print("Listing audio devices...")
+        logger.info("Listing audio devices...")
         devices = find_audio_devices(bl)
 
         if len(devices) == 1:
-            print("Only found 1 device, connecting directly")
+            logger.info("Only found 1 device, connecting directly")
             mac = devices[0]["mac_address"]
         else:
-            print("Found %s devices, showing chooser" % len(devices))
+            logger.info("Found %s devices, showing chooser" % len(devices))
             mac = show_window(devices)
 
-        print("Connecting to %s" % mac)
+        logger.info("Connecting to %s", mac)
         connect(bl, mac)
         assert is_connected(bl.get_device_info(mac))
 
     time.sleep(2)
-    print("Init pulse...")
+    logger.info("Init pulse...")
     with Pulse('blue-audio-con') as pulse:
-        print("Pulse connected, looking for bluez card and sink")
+        logger.info("Pulse connected, looking for bluez card and sink")
         card = find_card(pulse, mac)
         sink = find_sink(mac, pulse)
 
-        print("Resetting profiles for %s" % card)
+        logger.info("Resetting profiles for %s", card)
         reset_card(pulse, card)
 
-        print("Setting default sink to %s" % sink)
+        logger.info("Setting default sink to %s", sink)
         pulse.sink_default_set(sink)
 
         for input in pulse.sink_input_list():
-            print("Moving input %s to bluez sink" % input)
+            logger.info("Moving input %s to bluez sink", input)
             pulse.sink_input_move(input.index, sink.index)
 
-        print("Setting profile for %s to a2dp" % card)
+        logger.info("Setting profile for %s to a2dp", card)
         pulse.card_profile_set(card, "a2dp_sink")
 
-    print("Done")
+    logger.info("Done")
     show_message("Done")
 
 

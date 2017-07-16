@@ -3,7 +3,6 @@ import time
 from contextlib import ContextDecorator
 
 import pexpect
-import sys
 
 
 class BluetoothctlError(Exception):
@@ -17,7 +16,6 @@ class Bluetoothctl(ContextDecorator):
     def __enter__(self):
         # out = subprocess.check_output("rfkill unblock bluetooth", shell=True)
         self.child = pexpect.spawnu("bluetoothctl", echo=False)
-        # self.child.logfile = sys.stdout
         return self
 
     def __exit__(self, *exc):
