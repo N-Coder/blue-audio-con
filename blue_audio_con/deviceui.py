@@ -9,6 +9,7 @@ from gi.repository import Gdk
 class DeviceSelectionWindow(Gtk.Window):
     def __init__(self, devices):
         Gtk.Window.__init__(self, title="Connect to BT Audio Device")
+        self.mac = None
         self.set_border_width(10)
 
         # Setting up the self.grid in which the elements are to be positionned
@@ -42,14 +43,20 @@ class DeviceSelectionWindow(Gtk.Window):
         # TODO improve device list: show available devices, update, icons
 
     def key_pressed(self, target, event):
-        if isinstance(event, Gdk.EventKey) and event.get_keycode().keycode == 36:
-            store, paths = self.treeview.get_selection().get_selected_rows()
-            self.mac = store.get_value(store.get_iter(paths[0]), 1)
-            self.close()
-            # TODO ESC, double click
+
+        if isinstance(event, Gdk.EventKey):
+            if event.get_keycode().keycode == 9:  # ESC
+                self.close()
+            elif event.get_keycode().keycode == 36:  # Enter
+                store, paths = self.treeview.get_selection().get_selected_rows()
+                self.mac = store.get_value(store.get_iter(paths[0]), 1)
+                self.close()
+                # TODO double click
 
 
-def show_window(devices):
+def show_chooser(devices):
     win = DeviceSelectionWindow(devices)
     Gtk.main()
+    if not win.mac:
+        raise KeyboardInterrupt()
     return win.mac

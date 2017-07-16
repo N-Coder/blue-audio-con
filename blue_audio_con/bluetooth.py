@@ -3,7 +3,7 @@ import time
 from contextlib import ExitStack
 
 from blue_audio_con.bluetoothctl import Bluetoothctl
-from blue_audio_con.deviceui import show_window
+from blue_audio_con.deviceui import show_chooser
 
 logger = logging.getLogger("bluetooth")
 
@@ -59,7 +59,7 @@ def bluetooth_main(notify):
             mac = devices[0]["mac_address"]
         else:
             notify.update("Found %s devices, showing chooser" % len(devices))
-            mac = show_window(devices)
+            mac = show_chooser(devices)
 
         notify.update("Connecting to %s" % mac)
         connect(bl, mac)
