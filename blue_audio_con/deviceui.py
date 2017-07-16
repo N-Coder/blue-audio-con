@@ -2,10 +2,8 @@ import gi
 
 gi.require_version('Gtk', '3.0')
 gi.require_version('Gdk', '3.0')
-gi.require_version('Notify', '0.7')
 from gi.repository import Gtk
 from gi.repository import Gdk
-from gi.repository import Notify
 
 
 class DeviceSelectionWindow(Gtk.Window):
@@ -41,25 +39,17 @@ class DeviceSelectionWindow(Gtk.Window):
 
         self.connect("delete-event", Gtk.main_quit)
         self.show_all()
+        # TODO improve device list: show available devices, update, icons
 
     def key_pressed(self, target, event):
         if isinstance(event, Gdk.EventKey) and event.get_keycode().keycode == 36:
             store, paths = self.treeview.get_selection().get_selected_rows()
             self.mac = store.get_value(store.get_iter(paths[0]), 1)
             self.close()
-        #TODO ESC, double click
+            # TODO ESC, double click
 
 
 def show_window(devices):
     win = DeviceSelectionWindow(devices)
     Gtk.main()
     return win.mac
-
-
-def show_message(text):
-    Notify.init('blue-audio-con')
-    msg = Notify.Notification.new(
-        "Bluetooth Audio Device Assistant",
-        text,
-        "dialog-information")
-    msg.show()

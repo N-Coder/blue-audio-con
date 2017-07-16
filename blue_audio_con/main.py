@@ -5,7 +5,8 @@ from contextlib import ExitStack
 from pulsectl import Pulse
 
 from blue_audio_con.bluetoothctl import Bluetoothctl
-from blue_audio_con.deviceui import show_message, show_window
+from blue_audio_con.deviceui import show_window
+from blue_audio_con.notification import Notification, STATUS_SUCCESS
 
 logger = logging.getLogger()
 logging.config.dictConfig({
@@ -90,56 +91,63 @@ def find_audio_devices(bl):
     return devices
 
 
-# TODO show progress, failure, success notifications on-screen
-# TODO set gnome audio profile
-# TODO improve device list: show available devices, update, icons
-
-def main():
-    logger.info("Init bluetooth...")
+def bluetooth_main(notify):
+    notify.update("Init bluetooth...")
     with ExitStack() as stack:
         bl = stack.enter_context(Bluetoothctl())
         logfile = open("/tmp/blue-audio-con.btctl.log", "w")
         bl.child.logfile = stack.enter_context(logfile)
 
-        logger.info("Bluetooth ready, starting scan.")
+        notify.update("Bluetooth ready, starting scan.")
         bl.start_scan()
 
-        logger.info("Listing audio devices...")
+        notify.update("Listing audio devices...")
         devices = find_audio_devices(bl)
 
         if len(devices) == 1:
-            logger.info("Only found 1 device, connecting directly")
+            notify.update("Only found 1 device, connecting directly")
             mac = devices[0]["mac_address"]
         else:
-            logger.info("Found %s devices, showing chooser" % len(devices))
+            notify.update("Found %s devices, showing chooser" % len(devices))
             mac = show_window(devices)
 
-        logger.info("Connecting to %s", mac)
+        notify.update("Connecting to %s" % mac)
         connect(bl, mac)
         assert is_connected(bl.get_device_info(mac))
+    return mac
 
-    time.sleep(2)
-    logger.info("Init pulse...")
+
+def pulse_main(notify, mac):
+    notify.update("Init pulse...")
     with Pulse('blue-audio-con') as pulse:
-        logger.info("Pulse connected, looking for bluez card and sink")
+        notify.update("Pulse connected, looking for bluez card and sink")
         card = find_card(pulse, mac)
         sink = find_sink(mac, pulse)
 
-        logger.info("Resetting profiles for %s", card)
+        notify.update("Resetting profiles for %s" % card)
         reset_card(pulse, card)
 
-        logger.info("Setting default sink to %s", sink)
+        notify.update("Setting default sink to %s" % sink)
         pulse.sink_default_set(sink)
 
         for input in pulse.sink_input_list():
-            logger.info("Moving input %s to bluez sink", input)
+            notify.update("Moving input %s to bluez sink" % input)
             pulse.sink_input_move(input.index, sink.index)
 
-        logger.info("Setting profile for %s to a2dp", card)
+        notify.update("Setting profile for %s to a2dp" % card)
         pulse.card_profile_set(card, "a2dp_sink")
+        # TODO set gnome audio profile
 
-    logger.info("Done")
-    show_message("Done")
+
+def main():
+    try:
+        with Notification() as notify:
+            mac = bluetooth_main(notify)
+            time.sleep(2)
+            pulse_main(notify, mac)
+            notify.update("Done", status=STATUS_SUCCESS)
+    except:
+        logger.error("Connecting to bluetooth audio device failed!", exc_info=True)
 
 
 if __name__ == "__main__":
