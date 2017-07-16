@@ -23,15 +23,18 @@ class Notification(ContextDecorator):
         self.active = True
         return self
 
-    def __exit__(self, *exc):
+    def __exit__(self, exc_type, exc_value, exc_traceback):
         self.active = False
-        if exc:
-            self.update("Failed: %s" % exc[0], STATUS_FAILED)
+        if exc_type:
+            self.update("Failed: %s" % repr(exc_type), STATUS_FAILED)
         Notify.uninit()
         return False
 
     def update(self, text=None, status=STATUS_IN_PROGRESS):
-        self.logger.info(text)
+        if status == STATUS_FAILED:
+            self.logger.error(text)
+        else:
+            self.logger.info(text)
 
         icon = {
             STATUS_IN_PROGRESS: "audio-volume-low",
