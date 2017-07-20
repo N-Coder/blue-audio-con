@@ -37,6 +37,10 @@ class Bluetoothctl(ContextDecorator):
         """Start bluetooth scanning process."""
         return self.get_output("scan on")
 
+    def stop_scan(self):
+        """Stop bluetooth scanning process."""
+        return self.get_output("scan off")
+
     def make_discoverable(self):
         """Make device discoverable."""
         return self.get_output("discoverable on")

@@ -48,20 +48,23 @@ def bluetooth_main(notify):
         logfile = open("/tmp/blue-audio-con.btctl.log", "w")
         bl.child.logfile = stack.enter_context(logfile)
 
-        notify.update("Bluetooth ready, starting scan.")
-        bl.start_scan()
+        try:
+            notify.update("Bluetooth ready, starting scan.")
+            bl.start_scan()
 
-        notify.update("Listing audio devices...")
-        devices = find_audio_devices(bl)
+            notify.update("Listing audio devices...")
+            devices = find_audio_devices(bl)
 
-        if len(devices) == 1:
-            notify.update("Only found 1 device, connecting directly")
-            mac = devices[0]["mac_address"]
-        else:
-            notify.update("Found %s devices, showing chooser" % len(devices))
-            mac = show_chooser(devices)
+            if len(devices) == 1:
+                notify.update("Only found 1 device, connecting directly")
+                mac = devices[0]["mac_address"]
+            else:
+                notify.update("Found %s devices, showing chooser" % len(devices))
+                mac = show_chooser(devices)
 
-        notify.update("Connecting to %s" % mac)
-        connect(bl, mac)
-        assert is_connected(bl.get_device_info(mac))
+            notify.update("Connecting to %s" % mac)
+            connect(bl, mac)
+            assert is_connected(bl.get_device_info(mac))
+        finally:
+            bl.stop_scan()
     return mac
