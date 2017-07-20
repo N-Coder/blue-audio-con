@@ -28,7 +28,10 @@ logging.config.dictConfig({
     },
     "root": {
         "level": "DEBUG",
-        "handlers": ["syslog", "console"]
+        "handlers": [
+            "syslog",
+            # "console"
+        ]
     },
     "disable_existing_loggers": False
 })
