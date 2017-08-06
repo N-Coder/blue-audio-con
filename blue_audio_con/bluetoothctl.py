@@ -1,4 +1,5 @@
 import re
+import subprocess
 import time
 from contextlib import ContextDecorator
 
@@ -14,7 +15,7 @@ class Bluetoothctl(ContextDecorator):
     """A wrapper for bluetoothctl utility."""
 
     def __enter__(self):
-        # out = subprocess.check_output("rfkill unblock bluetooth", shell=True)
+        out = subprocess.check_output("rfkill unblock bluetooth", shell=True)
         self.child = pexpect.spawnu("bluetoothctl", echo=False)
         return self
 
@@ -102,27 +103,23 @@ class Bluetoothctl(ContextDecorator):
     def pair(self, mac_address):
         """Try to pair with a device by mac address."""
         out = self.get_output("pair " + mac_address, 4)
-        res = self.child.expect(["Failed to pair", "Pairing successful", pexpect.EOF])
-        success = True if res == 1 else False
-        return success
+        res = self.child.expect(["Pairing successful", "Failed to pair", pexpect.EOF, pexpect.TIMEOUT])
+        return res == 0
 
     def remove(self, mac_address):
         """Remove paired device by mac address, return success of the operation."""
         out = self.get_output("remove " + mac_address, 3)
-        res = self.child.expect(["not available", "Device has been removed", pexpect.EOF])
-        success = True if res == 1 else False
-        return success
+        res = self.child.expect(["Device has been removed", "not available", pexpect.EOF, pexpect.TIMEOUT])
+        return res == 0
 
     def connect(self, mac_address):
         """Try to connect to a device by mac address."""
         out = self.get_output("connect " + mac_address, 2)
-        res = self.child.expect(["Failed to connect", "Connection successful", pexpect.EOF])
-        success = True if res == 1 else False
-        return success
+        res = self.child.expect(["Connection successful", "Failed to connect", pexpect.EOF, pexpect.TIMEOUT])
+        return res == 0
 
     def disconnect(self, mac_address):
         """Try to disconnect to a device by mac address."""
         out = self.get_output("disconnect " + mac_address, 2)
-        res = self.child.expect(["Failed to disconnect", "Successful disconnected", pexpect.EOF])
-        success = True if res == 1 else False
-        return success
+        res = self.child.expect(["Successful disconnected", "Failed to disconnect", pexpect.EOF, pexpect.TIMEOUT])
+        return res == 0

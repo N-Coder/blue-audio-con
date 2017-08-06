@@ -26,7 +26,7 @@ class Notification(ContextDecorator):
             self.update("Failed: %s" % repr(exc_type), STATUS_FAILED)
         if self.notification:
             self.notification.set_hint("resident", GLib.Variant('b', False))
-            self.notification.set_timeout(-1)  # NOTIFY_EXPIRES_DEFAULT
+            self.notification.set_timeout(10)  # s
             self.notification.show()
         Notify.uninit()
 
