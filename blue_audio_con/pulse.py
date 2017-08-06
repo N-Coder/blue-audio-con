@@ -2,7 +2,7 @@ import json
 import logging
 import time
 
-from pulsectl import Pulse
+from pulsectl import Pulse, PulseOperationFailed
 
 logger = logging.getLogger("pulse")
 
@@ -17,8 +17,12 @@ def find_sink(mac, pulse):
 def reset_card(pulse, card):
     for p in ["a2dp_sink", "off", "headset_head_unit", "off", "a2dp_sink"]:
         logger.debug("Set profile to %s", p)
-        pulse.card_profile_set(card, p)
+        try:
+            pulse.card_profile_set(card, p)
+        except PulseOperationFailed:
+            logger.error("Could not set profile, continuing", exc_info=True)
         time.sleep(0.1)
+    assert (card.profile_active.name == "a2dp_sink")
 
 
 def find_card(pulse, mac):
@@ -76,12 +80,12 @@ def pulse_main(notify, mac):
     notify.update("Init pulse...")
     with Pulse('blue-audio-con') as pulse:
         notify.update("Pulse connected, looking for bluez card and sink")
-        card = find_card(pulse, mac)
-        sink = find_sink(mac, pulse)
 
+        card = find_card(pulse, mac)
         notify.update("Resetting profiles for %s" % card)
         reset_card(pulse, card)
 
+        sink = find_sink(mac, pulse)
         notify.update("Setting default sink to %s" % sink)
         pulse.sink_default_set(sink)
 
